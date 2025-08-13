@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>চেইন/ফিরিস্তি · ওয়ারিশ বন্টন · দলিলমূলে স্বত্ব হস্তান্তর (Single-File App)</title>
+  <style>
+    :root{
+      --bg: #0c1222;
+      --panel: #121a2b;
+      --ink: #e8f0ff;
+      --muted: #9fb2c9;
+      --line: #22324a;
+      --primary: #51a7ff;
+      --accent: #22c55e;
+      --danger: #ff6b6b;
+      --warn: #f59e0b;
+      --br: 14px;
+      --pad: 12px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg,#0b1220 0,#0e1528 40%,#0b1220 100%);
+      font: 15px/1.55 "Noto Sans Bengali", "SolaimanLipi", "Siyam Rupali", Kalpurush, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+    }
+    header {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(11,18,34,.75);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 10px 16px; }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .brand h1 { font-size:18px; margin:0; }
+    .brand small { color: var(--muted); }
+
+    /* single column setup */
+    main { max-width:1100px; margin: 18px auto; padding: 0 16px; display: grid; grid-template-columns: 1fr; gap: 16px; }
+
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--br); box-shadow: var(--shadow); }
+    .card h3 { margin:0; padding:12px 14px; border-bottom:1px solid var(--line); font-size:15px; }
+    .card .body { padding:12px; }
+
+    label { display:block; margin:.35rem 0 .25rem; color:#cfe0ff; }
+    input, select, textarea { width:100%; padding:9px 10px; border-radius:10px; background:#0a1222; border:1px solid #24324a; color:var(--ink); font-family: inherit; }
+    input[type="text" inputmode="decimal"] { appearance:textfield; }
+    input:focus, select:focus, textarea:focus { outline:2px solid #2a4a7a; border-color:#4b6ea7; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .row3 { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .tiny { color:#a7bbd2; font-size:12px; }
+
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:9px 12px; border-radius:10px; border:1px solid #2a3954; background:#0f1932; color:var(--ink); cursor:pointer; }
+    .btn:hover { background:#142241; }
+    .btn.primary { background: linear-gradient(135deg,#2563eb,#22c55e); border:none; }
+    .btn.danger { background:#3a1212; border-color:#6b1d1d; }
+    .btn.warn { background:#3a2a12; border-color:#6b4d1d; }
+    .btn.ghost { background:#0a1222; }
+    .btnbar { display:flex; flex-wrap:wrap; gap:8px; }
+
+    .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+    .tab { padding:8px 12px; border-radius:999px; border:1px solid #2a3954; background:#0a1222; color:#cfe6ff; cursor:pointer; }
+    .tab.active { background: var(--primary); color:#051229; border-color:transparent; }
+
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:8px; border-bottom:1px solid #23324b; text-align:left; vertical-align:top; }
+    th { color:#cfe0ff; font-weight:700; }
+    tfoot td { font-weight:700; }
+
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:#0a1222; border:1px solid #24324a; }
+    .badge { padding:3px 8px; border-radius:999px; font-size:12px; background:#0d1a2e; border:1px solid #274165; color:#9cc7ff; }
+    .notice { padding:10px; border-radius:12px; background:#0d1b31; border:1px solid #23324b; }
+    .warn { padding:10px; border-radius:12px; background:#2a1720; border:1px solid #5e2339; color:#ffd1d9; }
+
+    .stack { display:flex; flex-direction:column; gap:12px; }
+
+    /* Chain visuals: Simple arrows from parent to children */
+    .chain { position:relative; padding-left:26px; margin-left:6px; }
+    .chain:before { content:""; position:absolute; left:12px; top:0; bottom:0; width:3px; background: linear-gradient(#2b3b58,#223a5a); }
+    .node { position:relative; background:#071227; border:1px solid #27415a; border-radius:12px; padding:12px; margin:14px 0 14px 36px; box-shadow:0 6px 18px rgba(0,0,0,.4); }
+    .node:before { content:""; position:absolute; left:-36px; top:22px; width:24px; height:2px; background: linear-gradient(90deg, #22c55e, #51a7ff); }
+    .edge { display:flex; align-items:center; gap:8px; margin:4px 0 10px 0; color:#b3c8ff; }
+    .edge .arrow { font-weight:900; font-size:18px; color:var(--accent); margin-right:6px; }
+    .node .sourceLabel { font-size:12px; color:var(--muted); margin-bottom:6px; }
+
+    .node table th, .node table td { padding:6px; border:none; }
+
+    /* Sale over-limit styling */
+    .over { border-color: #ff6b6b !important; background: #341b1b !important; color:#ffd1d1 !important; }
+    .neg { color:#ff9b9b; font-weight:700; }
+
+    @media print {
+      header, .no-print { display:none !important; }
+      body { background:#fff; color:#000; }
+      .card { box-shadow:none; }
+      .chain:before { background:#000; }
+      .node { border-color:#000; background:#fff; }
+      .node:before { background:#000; }
+      .badge, .pill { border-color:#000; color:#000; }
+      .btn { display:none !important; }
+      .over { border-color:#c00 !important; background:#fee !important; color:#900 !important; }
+      .neg { color:#c00 !important; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l7 4v10l-7 4-7-4V7l7-4z" stroke="#9cc7ff" stroke-width="1.5"/><path d="M12 7l3.5 2v6L12 17l-3.5-2V9L12 7z" fill="#4f9cff"/></svg>
+      <h1>চেইন/ফিরিস্তি · ওয়ারিশ বন্টন · স্বত্ব হস্তান্তর</h1>
+      <small>সেটআপ ভিউ ফুল-পেজ</small>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h3>সেটআপ ও ডাটা এন্ট্রি</h3>
+      <div class="body stack">
+        <div class="row">
+          <div>
+            <label>আইন নির্বাচন</label>
+            <select id="lawSystem">
+              <option value="muslim_hanafi">মুসলিম আইন (하নাফি)</option>
+              <option value="hindu_dayabhaga">হিন্দু আইন (দেয়াভাগা)</option>
+              <option value="christian_isa">খ্রিস্টান আইন (ইন্ডিয়ান সাকসেশন অ্যাক্ট)</option>
+            </select>
+            <p class="tiny">নির্বাচিত আইনের ভিত্তিতে মৃত্যু-পরবর্তী বন্টন চলবে।</p>
+          </div>
+          <div>
+            <label>মৃত ব্যক্তির লিঙ্গ</label>
+            <select id="deceasedSex">
+              <option value="male">পুরুষ</option>
+              <option value="female">নারী</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="tabs no-print">
+          <button class="tab active" data-tab="khatian">খতিয়ান/দাগ</button>
+          <button class="tab" data-tab="chain">চেইন/ফিরিস্তি</button>
+          <button class="tab" data-tab="rules">কাস্টম রুলস</button>
+          <button class="tab" data-tab="print">প্রিন্ট/পিডিএফ</button>
+        </div>
+
+        <!-- Khatian Manager -->
+        <div id="panel-khatian" class="panel">
+          <div class="notice">একটি বা একাধিক <b>খতিয়ান</b> যোগ করুন; প্রতিটি খতিয়ানে এক বা একাধিক <b>দাগ</b> (শ্রেণি ও জমি একরে) দিন। প্রতিটি দাগের পাশে মালিকানা অংশ লিখুন (0.0000 - 1.0000)।</div>
+          <div class="btnbar" style="margin-top:8px">
+            <button class="btn" id="addKhatian">খতিয়ান যোগ করুন</button>
+            <button class="btn ghost" id="loadSampleKhatian">সাম্পল</button>
+            <button class="btn" id="saveAll">লোকাল সেভ</button>
+            <button class="btn warn" id="undoBtn">আন্ডু</button>
+            <button class="btn danger" id="resetAll">রিসেট</button>
+          </div>
+          <div id="khatianWrap" class="stack" style="margin-top:8px"></div>
+          <div class="pill">সর্বমোট জমি (শেয়ারসহ): <b id="grandArea">0.0000</b> একর</div>
+        </div>
+
+        <!-- Chain / Firisti -->
+        <div id="panel-chain" class="panel" style="display:none">
+          <div class="warn">চেইন ভিউতে প্রতিটি নোডের পাশে স্পষ্ট অ্যাকশন (মারা গেছেন / বিক্রি করেছেন / নাম পাল্টান / নোড মুছুন) থাকবে।</div>
+          <div id="chains" class="stack" style="margin-top:10px"></div>
+        </div>
+
+        <!-- Custom Rules -->
+        <div id="panel-rules" class="panel" style="display:none">
+          <div class="notice">হিন্দু/খ্রিস্টান বা অন্য কাস্টম ব্যবস্থায় শতাংশভিত্তিক রুল দিন।</div>
+          <div class="btnbar" style="margin-top:8px">
+            <button class="btn" id="addRule">রুল যোগ</button>
+            <button class="btn ghost" id="presetHindu">দেয়াভাগা (ডেমো)</button>
+            <button class="btn ghost" id="presetChristian">খ্রিস্টান (ডেমো)</button>
+            <button class="btn warn" id="clearRules">ক্লিয়ার</button>
+          </div>
+          <table id="rulesTable" style="margin-top:10px">
+            <thead><tr><th>অংশীদার/শ্রেণি</th><th>শতাংশ (%)</th><th class="no-print">একশন</th></tr></thead>
+            <tbody></tbody>
+            <tfoot><tr><td>মোট</td><td id="rulesTotal">0%</td><td></td></tr></tfoot>
+          </table>
+        </div>
+
+        <!-- Print -->
+        <div id="panel-print" class="panel" style="display:none">
+          <div class="notice">প্রিন্ট আউটপুটে অ্যারো/লাইন থাকবে—যে নোড কোথা থেকে এসেছে তা বোঝাবে। বিক্রিতে অতিরিক্ত বিক্রির ঘর <b>লাল</b> দেখাবে।</div>
+          <div class="btnbar">
+            <button class="btn primary" id="printBtn">প্রিন্ট / PDF</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ----------------------------
+    // Utilities
+    // ----------------------------
+    const $ = (s)=>document.querySelector(s);
+    const $$ = (s)=>Array.from(document.querySelectorAll(s));
+    const uid = ()=>Math.random().toString(36).slice(2,9);
+    const toBn = (n)=> (Number(n||0)).toLocaleString('bn-BD', {minimumFractionDigits:4, maximumFractionDigits:4});
+
+    // Bengali/Arabic-Indic digits → Latin
+    const DIGMAP = {"০":"0","১":"1","২":"2","৩":"3","৪":"4","৫":"5","৬":"6","৭":"7","৮":"8","৯":"9","٫":".","،":",","٬":",","٫":"."};
+    function fromBn(str){ if(str==null) return ''; return String(str).replace(/[০-৯٬٫،]/g, ch=>DIGMAP[ch]||ch); }
+    function parseNum(v, def=0){ const x = Number(fromBn(v).trim()); return Number.isFinite(x) ? x : def; }
+
+    function debounce(fn, wait=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
+
+    function escapeHtml(s){ if(s===undefined || s===null) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+    function round4(x){ return Math.round((Number(x)||0)*10000)/10000; }
+
+    // ----------------------------
+    // State + History (Undo)
+    // ----------------------------
+    const state = {
+      lawSystem:'muslim_hanafi', deceasedSex:'male',
+      khatians:[], // {id, ownerName, khatianNo, dags:[{id,dagNo,class,area, shareFraction}], chainRoot}
+      rules:[]
+    };
+    const historyStack = [];
+    function pushHistory(){ historyStack.push(JSON.stringify(state)); if(historyStack.length>40) historyStack.shift(); }
+    function undo(){ if(historyStack.length){ const snap = historyStack.pop(); const obj = JSON.parse(snap); Object.assign(state, obj); renderKhatians(); renderChains(); renderRules(); } }
+
+    // ----------------------------
+    // Khatian CRUD + Rendering
+    // ----------------------------
+    function portionsFromKhatian(k){
+      const obj = {};
+      k.dags.forEach(d=>{ const a = (Number(d.area)||0) * (Number(d.shareFraction)||0); obj[d.id] = round4(a); });
+      return obj;
+    }
+
+    function addKhatian(data={}){
+      const k = Object.assign({
+        id:uid(), ownerName:'', khatianNo:'',
+        dags:[{id:uid(), dagNo:'', class:'', area:0, shareFraction:1.0000}],
+        chainRoot:null
+      }, data);
+      if(!k.chainRoot){ k.chainRoot = makeOwnerNode(k.ownerName||'মালিক (শুরু)', portionsFromKhatian(k)); }
+      state.khatians.push(k);
+      pushHistory();
+      renderKhatians();
+      renderChains();
+    }
+
+    function renderKhatians(){
+      const wrap = $('#khatianWrap'); wrap.innerHTML = '';
+      let grand = 0;
+      state.khatians.forEach((k,ki)=>{
+        const total = k.dags.reduce((s,d)=> s + ((Number(d.area)||0) * (Number(d.shareFraction)||0)), 0); grand += total;
+        const card = document.createElement('div'); card.className='card';
+        card.innerHTML = `
+          <h3>খতিয়ান #${ki+1}</h3>
+          <div class="body">
+            <div class="row">
+              <div><label>মালিকের নাম</label><input data-kid="${k.id}" data-field="ownerName" value="${escapeHtml(k.ownerName)}"></div>
+              <div><label>খতিয়ান নং</label><input data-kid="${k.id}" data-field="khatianNo" value="${escapeHtml(k.khatianNo)}"></div>
+            </div>
+            <div style="overflow:auto;margin-top:10px">
+              <table>
+                <thead><tr><th>দাগ নং</th><th>শ্রেণি</th><th>জমি (একর)</th><th>মালিকানা (0.0000-1.0000)</th><th class="no-print">একশন</th></tr></thead>
+                <tbody id="tb-${k.id}"></tbody>
+                <tfoot><tr><td colspan="2">এই খতিয়ানের জমির মোট (শেয়ারসহ)</td><td><b id="kh-total-${k.id}">${toBn(total)}</b></td><td></td><td class="no-print"><button class="btn" data-add-dag="${k.id}">দাগ যোগ</button></td></tr></tfoot>
+              </table>
+            </div>
+            <div class="btnbar no-print" style="margin-top:8px">
+              <button class="btn danger" data-del-k="${k.id}">খতিয়ান মুছুন</button>
+              <button class="btn" data-sync-root="${k.id}">চেইন রুট আপডেট</button>
+            </div>
+          </div>`;
+        wrap.appendChild(card);
+
+        const tbody = card.querySelector('#tb-'+k.id);
+        k.dags.forEach(d=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><input data-kid="${k.id}" data-did="${d.id}" data-field="dagNo" value="${escapeHtml(d.dagNo)}"></td>
+            <td><input data-kid="${k.id}" data-did="${d.id}" data-field="class" value="${escapeHtml(d.class)}"></td>
+            <td><input type="text" inputmode="decimal" step="0.0001" min="0" data-kid="${k.id}" data-did="${d.id}" data-field="area" value="${d.area}"></td>
+            <td><input type="text" inputmode="decimal" step="0.0001" min="0" max="1" data-kid="${k.id}" data-did="${d.id}" data-field="shareFraction" value="${(Number(d.shareFraction)||0).toFixed(4)}"></td>
+            <td class="no-print"><button class="btn danger" data-del-dag="${k.id}|${d.id}">মুছুন</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      });
+
+      $('#grandArea').textContent = toBn(grand);
+
+      // Bind actions
+      // Add dag
+      $$('[data-add-dag]').forEach(btn=>btn.addEventListener('click',()=>{
+        const k = state.khatians.find(x=>x.id===btn.dataset.addDag);
+        if(!k) return;
+        k.dags.push({id:uid(), dagNo:'', class:'', area:0, shareFraction:1.0000});
+        pushHistory();
+        renderKhatians(); renderChains();
+      }));
+
+      // Delete dag
+      $$('[data-del-dag]').forEach(btn=>btn.addEventListener('click',()=>{
+        const [kid,did] = btn.dataset.delDag.split('|');
+        const k = state.khatians.find(x=>x.id===kid);
+        if(!k) return;
+        k.dags = k.dags.filter(x=>x.id!==did);
+        pushHistory();
+        renderKhatians(); renderChains();
+      }));
+
+      // Delete khatian
+      $$('[data-del-k]').forEach(btn=>btn.addEventListener('click',()=>{
+        state.khatians = state.khatians.filter(x=>x.id!==btn.dataset.delK);
+        pushHistory();
+        renderKhatians(); renderChains();
+      }));
+
+      // Sync root
+      $$('[data-sync-root]').forEach(btn=>btn.addEventListener('click',()=>{
+        const k = state.khatians.find(x=>x.id===btn.dataset.syncRoot);
+        if(!k) return;
+        k.chainRoot = makeOwnerNode(k.ownerName||'মালিক (শুরু)', portionsFromKhatian(k));
+        pushHistory();
+        renderChains();
+      }));
+    }
+
+    // Delegated input handler for khatianWrap (attach once)
+    function handleKhatianInput(e){
+      const el = e.target;
+      const kid = el.dataset.kid;
+      if(!kid) return;
+      const k = state.khatians.find(x=>x.id===kid);
+      if(!k) return;
+      const field = el.dataset.field;
+      const did = el.dataset.did;
+      if(did){
+        const d = k.dags.find(x=>x.id===did);
+        if(!d) return;
+        if(field==='area' || field==='shareFraction'){ d[field] = parseNum(el.value||0); }
+        else { d[field] = el.value; }
+      } else {
+        if(field) k[field] = el.value;
+      }
+      deferredUpdate();
+    }
+
+    const deferredUpdate = debounce(()=>{
+      state.khatians.forEach(k=>{
+        const total = k.dags.reduce((s,d)=> s + ((Number(d.area)||0) * (Number(d.shareFraction)||0)), 0);
+        const el = document.getElementById('kh-total-'+k.id); if(el) el.textContent = toBn(total);
+        if(k.chainRoot) k.chainRoot.portions = portionsFromKhatian(k);
+      });
+      renderChains();
+    }, 350);
+
+    // ----------------------------
+    // Owner Chain Engine
+    // ----------------------------
+    function makeOwnerNode(name, portions){ return { id:uid(), type:'owner', name:name||'মালিক', portions: Object.assign({}, portions), children:[], edge:null }; }
+
+    function renderChains(){
+      const host = $('#chains'); host.innerHTML = '';
+      state.khatians.forEach((k,idx)=>{
+        const card = document.createElement('div'); card.className='card';
+        card.innerHTML = `<h3>খতিয়ান #${idx+1} · ${escapeHtml(k.khatianNo||'—')} · মালিক: ${escapeHtml(k.ownerName||'—')}</h3><div class="body"><div class="chain" id="chain-${k.id}"></div></div>`;
+        host.appendChild(card);
+        const root = k.chainRoot || makeOwnerNode(k.ownerName||'মালিক (শুরু)', portionsFromKhatian(k));
+        k.chainRoot = root;
+        renderNode(document.getElementById('chain-'+k.id), root, k, null);
+      });
+    }
+
+    function portionsTable(khatian, portions){
+      const rows = khatian.dags.map(d=>{
+        const a = toBn(portions?.[d.id]||0);
+        return `<tr><td style="width:40%">${escapeHtml(d.dagNo||'—')}</td><td style="width:30%">${escapeHtml(d.class||'—')}</td><td style="text-align:right">${a}</td></tr>`;
+      }).join('');
+      return `<table><thead><tr><th>দাগ</th><th>শ্রেণি</th><th style="text-align:right">মালিকানা (একর)</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function renderNode(container, node, khatian, parent){
+      const wrapper = document.createElement('div');
+      const total = Object.values(node.portions||{}).reduce((s,a)=>s+(a||0),0);
+      const table = portionsTable(khatian, node.portions);
+      wrapper.innerHTML = `
+        <div class="node">
+          <div class="sourceLabel">${node.edge?.label? escapeHtml(node.edge.label) : ' উৎস: '}</div>
+          <div class="edge"><span class="arrow">→</span><span class="badge">${escapeHtml(node.type||'NODE')}</span> <b>${escapeHtml(node.name)}</b> <span class="muted">(মোট ${toBn(total)} একর)</span></div>
+          ${table}
+          <div class="btnbar no-print" style="margin-top:8px">
+            <button class="btn" data-death="${node.id}">তিনি মারা গেছেন</button>
+            <button class="btn" data-sale="${node.id}">তিনি বিক্রি করেছেন</button>
+            <button class="btn ghost" data-rename="${node.id}">নাম বদলান</button>
+            ${parent? `<button class="btn danger" data-delete-node="${parent?.id}|${node.id}">নোড মুছুন</button>`:''}
+          </div>
+          <div class="stack" id="form-${node.id}"></div>
+          <div class="stack" id="children-${node.id}"></div>
+        </div>
+      `;
+      container.appendChild(wrapper);
+
+      // Bind buttons
+      wrapper.querySelector(`[data-death="${node.id}"]`).addEventListener('click', ()=>{
+        const formHost = wrapper.querySelector(`#form-${node.id}`); formHost.innerHTML = ''; buildDeathForm(formHost, node, khatian);
+      });
+      wrapper.querySelector(`[data-sale="${node.id}"]`).addEventListener('click', ()=>{
+        const formHost = wrapper.querySelector(`#form-${node.id}`); formHost.innerHTML = ''; buildSaleForm(formHost, node, khatian);
+      });
+      wrapper.querySelector(`[data-rename="${node.id}"]`).addEventListener('click', ()=>{
+        const nn = prompt('নতুন নাম দিন', node.name||''); if(nn!=null){ node.name = nn.trim()||node.name; pushHistory(); renderChains(); }
+      });
+      const delBtn = wrapper.querySelector(`[data-delete-node="${parent?.id}|${node.id}"]`);
+      if(delBtn){ delBtn.addEventListener('click', ()=>{
+        if(confirm('এই নোড ও তার সব সাব-নোড মুছে যাবে—অগ্রসর হবেন?')){
+          parent.children = parent.children.filter(c=>c.id!==node.id);
+          pushHistory();
+          renderChains();
+        }
+      }); }
+
+      // children
+      const chost = wrapper.querySelector('#children-'+node.id);
+      node.children.forEach(c=> renderNode(chost, c, khatian, node));
+    }
+
+    // ------- Death → heirs (with auto-name inputs & multi-wives)
+    function buildDeathForm(host, node, khatian){
+      const box = document.createElement('div'); box.className='card';
+      const isMale = state.deceasedSex==='male';
+      box.innerHTML = `
+        <h3>মৃত্যুজনিত বন্টন · আইন: ${($('#lawSystem').selectedOptions[0]||{}).textContent}</h3>
+        <div class="body stack">
+          <div class="row3">
+            <div><label>পিতা আছে?</label><select id="df-hasFather"><option value="no">না</option><option value="yes">হ্যাঁ</option></select></div>
+            <div><label>মাতা আছে?</label><select id="df-hasMother"><option value="no">না</option><option value="yes">হ্যাঁ</option></select></div>
+            <div>${isMale? `<label>স্ত্রী (সংখ্যা)</label><input type="text" inputmode="decimal" min="0" id="df-wives" value="0">` : `<label>স্বামী আছে?</label><select id="df-hasHusband"><option value="no">না</option><option value="yes">হ্যাঁ</option></select>`}</div>
+          </div>
+          <div class="row3">
+            <div><label>পুত্র (সংখ্যা)</label><input type="text" inputmode="decimal" min="0" id="df-sons" value="0"></div>
+            <div><label>কন্যা (সংখ্যা)</label><input type="text" inputmode="decimal" min="0" id="df-daughters" value="0"></div>
+            <div><label>উতরাইন ভাইবোন (সংখ্যা)</label><input type="text" inputmode="decimal" min="0" id="df-uterine" value="0"></div>
+          </div>
+          <div class="row3">
+            <div><label>সগোত্র ভাই</label><input type="text" inputmode="decimal" min="0" id="df-fullB" value="0"></div>
+            <div><label>সগোত্র বোন</label><input type="text" inputmode="decimal" min="0" id="df-fullS" value="0"></div>
+            <div><label>পিতৃ-সহোদর ভাই/বোন</label>
+              <div class="row" style="grid-template-columns:1fr 1fr">
+                <input type="text" inputmode="decimal" min="0" id="df-patB" value="0" placeholder="ভাই">
+                <input type="text" inputmode="decimal" min="0" id="df-patS" value="0" placeholder="বোন">
+              </div>
+            </div>
+          </div>
+
+          <!-- Auto name boxes -->
+          <div class="stack" id="df-names"></div>
+
+          <div class="btnbar"><button class="btn primary" id="df-generate">বন্টন তৈরি করুন</button></div>
+          <div id="df-out"></div>
+        </div>`;
+      host.appendChild(box);
+
+      // Auto-name boxes logic
+      const namesHost = box.querySelector('#df-names');
+      function renderNameBoxes(){
+        const wives = parseNum(box.querySelector('#df-wives')?.value||0);
+        const sons = parseNum(box.querySelector('#df-sons').value||0);
+        const daughters = parseNum(box.querySelector('#df-daughters').value||0);
+        const uterine = parseNum(box.querySelector('#df-uterine').value||0);
+        const fullB = parseNum(box.querySelector('#df-fullB').value||0);
+        const fullS = parseNum(box.querySelector('#df-fullS').value||0);
+        const patB = parseNum(box.querySelector('#df-patB').value||0);
+        const patS = parseNum(box.querySelector('#df-patS').value||0);
+        namesHost.innerHTML = '';
+        function mk(title, id, n, placeholder='নাম'){
+          if(n<=0) return; const card = document.createElement('div'); card.className='card';
+          card.innerHTML = `<h3>${title} (${n})</h3><div class="body" id="bx-${id}"></div>`; namesHost.appendChild(card);
+          const b = card.querySelector('#bx-'+id);
+          for(let i=1;i<=n;i++){ const inp=document.createElement('input'); inp.placeholder=`${title} ${i} এর নাম`; inp.dataset.group=id; inp.dataset.idx=i; b.appendChild(inp); }
+        }
+        if(isMale) mk('স্ত্রী','wives',wives);
+        else {
+          const hasH = box.querySelector('#df-hasHusband').value==='yes';
+          if(hasH) { const c=document.createElement('div'); c.className='card'; c.innerHTML=`<h3>স্বামী</h3><div class="body"><input placeholder="স্বামীর নাম" data-group="husband" data-idx="1"></div>`; namesHost.appendChild(c); }
+        }
+        mk('পুত্র','sons',sons);
+        mk('কন্যা','daughters',daughters);
+        mk('উতরাইন ভাইবোন','uterine',uterine);
+        mk('সগোত্র ভাই','fullB',fullB);
+        mk('সগোত্র বোন','fullS',fullS);
+        mk('পিতৃ-সহোদর ভাই','patB',patB);
+        mk('পিতৃ-সহোদর বোন','patS',patS);
+      }
+
+      ['#df-wives','#df-sons','#df-daughters','#df-uterine','#df-fullB','#df-fullS','#df-patB','#df-patS','#df-hasHusband']
+        .forEach(sel=>{ const el = box.querySelector(sel); if(el) el.addEventListener('input', renderNameBoxes); });
+      renderNameBoxes();
+
+      box.querySelector('#df-generate').addEventListener('click', ()=>{
+        // Collect context
+        const ctx = {
+          hasFather: box.querySelector('#df-hasFather').value==='yes',
+          hasMother: box.querySelector('#df-hasMother').value==='yes',
+          hasSpouse: !isMale && (box.querySelector('#df-hasHusband').value==='yes'),
+          wivesCount: isMale ? parseNum(box.querySelector('#df-wives').value||0) : 0,
+          sons: parseNum(box.querySelector('#df-sons').value||0),
+          daughters: parseNum(box.querySelector('#df-daughters').value||0),
+          uterineSiblings: parseNum(box.querySelector('#df-uterine').value||0),
+          fullBrothers: parseNum(box.querySelector('#df-fullB').value||0),
+          fullSisters: parseNum(box.querySelector('#df-fullS').value||0),
+          paternalBrothers: parseNum(box.querySelector('#df-patB').value||0),
+          paternalSisters: parseNum(box.querySelector('#df-patS').value||0)
+        };
+
+        // Names
+        function namesOf(group){ return Array.from(namesHost.querySelectorAll(`[data-group="${group}"]`)).map((i,idx)=> i.value.trim() || `${group}-${idx+1}`); }
+        const names = {
+          wives: isMale? namesOf('wives') : [],
+          husband: !isMale && ctx.hasSpouse ? (namesOf('husband')[0]||'স্বামী') : null,
+          sons: namesOf('sons'),
+          daughters: namesOf('daughters'),
+          uterine: namesOf('uterine'),
+          fullB: namesOf('fullB'),
+          fullS: namesOf('fullS'),
+          patB: namesOf('patB'),
+          patS: namesOf('patS')
+        };
+
+        const dist = deathDistributeAdvanced(node.portions, ctx, names);
+
+        // Set children & clear parent's own portions
+        const old = node.portions; // keep for calc
+        node.children = [];
+        node.portions = {}; // clear per requirement
+        dist.heirs.forEach(h=>{
+          const portions = {}; Object.keys(old||{}).forEach(did=>{ portions[did] = round4((old?.[did]||0) * (h.fraction||0)); });
+          const c = makeOwnerNode(h.label, portions); c.edge = {type:'death', label:`মৃত্যুযোত ${(h.fraction*100).toFixed(2)}%`};
+          node.children.push(c);
+        });
+        pushHistory();
+        const rows = dist.heirs.map(h=>`<tr><td>${escapeHtml(h.label)}</td><td>${(h.fraction*100).toFixed(2)}%</td></tr>`).join('');
+        box.querySelector('#df-out').innerHTML = `<table><thead><tr><th>ওয়ারিশ</th><th>শতাংশ</th></tr></thead><tbody>${rows}</tbody></table>`;
+        renderChains();
+      });
+    }
+
+    function deathDistributeAdvanced(portions, ctx, names){
+      const heirs=[]; let fixed=0; const isMale = state.deceasedSex==='male';
+      const childrenExist = (ctx.sons + ctx.daughters) > 0;
+
+      // Spouse
+      if(isMale){
+        if(ctx.wivesCount>0){ const sp = childrenExist? 1/8 : 1/4; heirs.push({label: ctx.wivesCount>1? `স্ত্রীগণ (${ctx.wivesCount} জন)`:'স্ত্রী', key:'wives', count:ctx.wivesCount, fraction:sp}); fixed+=sp; }
+      } else {
+        if(ctx.hasSpouse){ const sp = childrenExist? 1/4 : 1/2; heirs.push({label:'স্বামী', key:'husband', count:1, fraction:sp}); fixed+=sp; }
+      }
+
+      // Mother
+      if(ctx.hasMother){
+        let mShare; const sibCount = ctx.uterineSiblings + ctx.fullBrothers + ctx.fullSisters + ctx.paternalBrothers + ctx.paternalSisters;
+        if(childrenExist || sibCount>=2) mShare = 1/6; else {
+          // উমারিয়াতাইন: উভয় পিতা-মাতা + স্বামী/স্ত্রী, সন্তান নেই
+          const spouseTaken = heirs.find(h=>h.key==='wives' || h.key==='husband')?.fraction || 0;
+          if(ctx.hasFather && (spouseTaken>0)) mShare = (1 - spouseTaken)/3; else mShare = 1/3;
+        }
+        heirs.push({label:'মাতা', key:'mother', fraction:mShare}); fixed+=mShare;
+      }
+
+      // Children
+      if(childrenExist){
+        if(ctx.hasFather){ heirs.push({label:'পিতা', key:'father', fraction:1/6}); fixed+=1/6; }
+        const residue = Math.max(0, 1-fixed);
+        if(ctx.sons>0){
+          const units = ctx.sons*2 + ctx.daughters;
+          const perUnit = units? (residue/units) : 0;
+          // Split across individual children by names (2:1)
+          names.sons.forEach(nm=> heirs.push({label:nm||'পুত্র', key:'son', fraction: perUnit*2/ (ctx.sons? 1:1)}));
+          names.daughters.forEach(nm=> heirs.push({label:nm||'কন্যা', key:'daughter', fraction: perUnit}));
+          fixed = 1; // all residue allocated
+        } else {
+          if(ctx.daughters===1){ heirs.push({label: names.daughters[0]||'কন্যা', key:'daughter', fraction:1/2}); fixed+=1/2; }
+          else if(ctx.daughters>=2){ const per = (2/3)/ctx.daughters; names.daughters.forEach((nm,i)=> heirs.push({label:nm||`কন্যা ${i+1}` , key:'daughter', fraction:per})); fixed+=2/3; }
+          // Father becomes residuary for remaining, if present
+          if(ctx.hasFather){ const rem = Math.max(0, 1-fixed); if(rem>0){ const f = heirs.find(h=>h.key==='father'); if(f) f.fraction += rem; else heirs.push({label:'পিতা', key:'father', fraction:rem}); fixed=1; } }
+        }
+      } else {
+        // No children
+        if(ctx.hasFather){ const rem = Math.max(0, 1-fixed); heirs.push({label:'পিতা (আসাবা)', key:'father', fraction:rem}); fixed = 1; }
+        else {
+          // Uterine siblings only if no ascendants/descendants
+          if(!ctx.hasMother){
+            if(ctx.uterineSiblings===1){ heirs.push({label: names.uterine[0]||'উতরাইন', key:'uterine', fraction:1/6}); fixed+=1/6; }
+            else if(ctx.uterineSiblings>=2){ const per=(1/3)/ctx.uterineSiblings; names.uterine.forEach((nm,i)=> heirs.push({label:nm||`উতরাইন ${i+1}`, key:'uterine', fraction:per})); fixed+=1/3; }
+          }
+          // Residue to full siblings, else paternal siblings
+          let residue = Math.max(0, 1-fixed);
+          const fullUnits = ctx.fullBrothers*2 + ctx.fullSisters;
+          const patUnits  = ctx.paternalBrothers*2 + ctx.paternalSisters;
+          if(residue>0){
+            if(fullUnits>0){
+              const per = residue/fullUnits;
+              names.fullB.forEach((nm)=> heirs.push({label:nm||'ভাই', key:'fullB', fraction: per*2}));
+              names.fullS.forEach((nm)=> heirs.push({label:nm||'বোন', key:'fullS', fraction: per*1}));
+              fixed = 1;
+            } else if(patUnits>0){
+              const per = residue/patUnits;
+              names.patB.forEach((nm)=> heirs.push({label:nm||'পিতৃ ভাই', key:'patB', fraction: per*2}));
+              names.patS.forEach((nm)=> heirs.push({label:nm||'পিতৃ বোন', key:'patS', fraction: per*1}));
+              fixed = 1;
+            }
+          }
+        }
+      }
+
+      // Split wives equally
+      const wives = heirs.find(h=>h.key==='wives');
+      if(wives && ctx.wivesCount>0){ const per = wives.fraction / ctx.wivesCount; const idx = heirs.indexOf(wives); heirs.splice(idx,1); names.wives.forEach((nm,i)=> heirs.splice(idx+i,0,{label:nm||`স্ত্রী ${i+1}`, key:'wife', fraction:per})); }
+
+      // Husband name replacement
+      const hub = heirs.find(h=>h.key==='husband'); if(hub && names.husband){ hub.label = names.husband; }
+
+      // Normalize if slight overflow
+      let sum = heirs.reduce((s,h)=>s+(h.fraction||0),0); if(sum>1.00001){ heirs.forEach(h=>h.fraction = h.fraction/sum); }
+      return {heirs};
+    }
+
+    // ------- Sale → deed (multi-buyers + oversell highlight)
+    function buildSaleForm(host, node, khatian){
+      const box=document.createElement('div'); box.className='card';
+      box.innerHTML = `
+        <h3>বিক্রয় দলিল</h3>
+        <div class="body stack">
+          <div class="row"><div><label>দলিল তারিখ</label><input type="date" id="sd-date"></div><div><label>দলিল নং</label><input id="sd-no"></div></div>
+          <div class="row">
+            <div><label>ক্রেতার সংখ্যা</label><input type="text" inputmode="decimal" value="1" id="sd-buyer-count"></div>
+            <div>
+              <label>ক্রেতাদের নাম ও শেয়ার (%)</label>
+              <div id="sd-buyers" class="stack"></div>
+              <div id="sd-shares-total" class="tiny muted"></div>
+              <div class="tiny">ইঙ্গিত: শেয়ার % যোগফল <b>১০০%</b> হওয়া উত্তম; না হলে প্রদত্ত অনুপাতে স্বয়ংক্রিয়ভাবে ভাগ হবে।</div>
+            </div>
+          </div>
+          <div class="notice">প্রতিটি দাগে কতটা বিক্রি হলো লিখুন (একর)। বিক্রেতার মালিকানার বেশি লিখলে লাল দেখাবে; অবশিষ্ট নেগেটিভ হলে (–) দেখাবে।</div>
+          <table id="sd-table"><thead><tr><th>দাগ</th><th>শ্রেণি</th><th style="text-align:right">মালিকানা</th><th style="text-align:right">বিক্রিত (একর)</th><th style="text-align:right">অবশিষ্ট</th></tr></thead><tbody></tbody><tfoot><tr><td colspan="2">মোট</td><td id="sd-owned" style="text-align:right">0.0000</td><td id="sd-sold" style="text-align:right">0.0000</td><td id="sd-rem" style="text-align:right">0.0000</td></tr></tfoot></table>
+          <div class="btnbar"><button class="btn primary" id="sd-apply">দলিল প্রয়োগ</button></div>
+        </div>`;
+      host.appendChild(box);
+
+      // Buyers UI (names + editable percentage)
+      const buyersHost = box.querySelector('#sd-buyers');
+      const sharesTotalEl = box.querySelector('#sd-shares-total');
+
+      function readBuyerDOM(){
+        return Array.from(buyersHost.querySelectorAll('[data-role="buyer-row"]')).map(row=>({
+          name: row.querySelector('[data-role="buyer-name"]').value,
+          pct: parseNum(row.querySelector('[data-role="buyer-pct"]').value||0)
+        }));
+      }
+
+      function updateSharesTotal(){
+        const total = readBuyerDOM().reduce((s,r)=>s+(r.pct||0),0);
+        sharesTotalEl.textContent = `মোট: ${total.toFixed(2)}%`;
+        sharesTotalEl.style.color = (Math.abs(total-100)<0.01)? '#9fb2c9' : '#ff9b9b';
+      }
+
+      function renderBuyerBoxes(){
+        const n = Math.max(1, parseNum(box.querySelector('#sd-buyer-count').value||'1',1));
+        const prev = readBuyerDOM();
+        buyersHost.innerHTML='';
+        for(let i=0;i<n;i++){
+          const nameVal = prev[i]?.name || '';
+          const pctVal  = (prev[i]?.pct!=null) ? prev[i].pct : (100/n);
+          const row = document.createElement('div');
+          row.className='row'; row.dataset.role='buyer-row';
+          row.style.gridTemplateColumns='2fr 1fr';
+          row.innerHTML = `<input data-role="buyer-name" data-idx="${i}" placeholder="ক্রেতা ${i+1} এর নাম" value="${escapeHtml(nameVal)}">`
+            + `<input data-role="buyer-pct" data-idx="${i}" placeholder="শেয়ার (%)" value="${pctVal.toFixed ? pctVal.toFixed(2) : pctVal}" inputmode="decimal">`;
+          buyersHost.appendChild(row);
+        }
+        buyersHost.querySelectorAll('[data-role="buyer-pct"]').forEach(inp=> inp.addEventListener('input', updateSharesTotal));
+        updateSharesTotal();
+      }
+      box.querySelector('#sd-buyer-count').addEventListener('input', renderBuyerBoxes);
+      renderBuyerBoxes();
+
+      // Table rows
+      const tbody=box.querySelector('#sd-table tbody'); tbody.innerHTML=''; let ownedTotal=0; let soldTotal=0; let remTotal=0;
+      const rowMap = new Map();
+      khatian.dags.forEach(d=>{ const owned=round4(node.portions?.[d.id]||0); ownedTotal+=owned; const tr=document.createElement('tr'); tr.innerHTML = `<td>${escapeHtml(d.dagNo||'—')}</td><td>${escapeHtml(d.class||'—')}</td><td style="text-align:right" data-owned="${d.id}">${toBn(owned)}</td><td><input type="text" inputmode="decimal" data-did="${d.id}" value="0"></td><td style="text-align:right" data-rem="${d.id}">${toBn(owned)}</td>`; tbody.appendChild(tr); rowMap.set(d.id, tr); });
+      box.querySelector('#sd-owned').textContent = toBn(ownedTotal);
+
+      function recompute(){
+        soldTotal=0; remTotal=0;
+        tbody.querySelectorAll('input').forEach(i=>{
+          const did = i.dataset.did; const tr = rowMap.get(did); const owned = round4(node.portions?.[did]||0);
+          const sold = round4(parseNum(i.value||0)); const rem = round4(owned - sold);
+          tr.querySelector(`[data-rem="${did}"]`).textContent = toBn(rem);
+          tr.classList.toggle('over', sold>owned+1e-9);
+          if(rem<0){ tr.querySelector(`[data-rem="${did}"]`).innerHTML = `<span class="neg">${toBn(rem)}</span>`; }
+          soldTotal += sold; remTotal += rem;
+        });
+        box.querySelector('#sd-sold').textContent = toBn(soldTotal);
+        box.querySelector('#sd-rem').innerHTML = remTotal<0? `<span class="neg">${toBn(remTotal)}</span>` : toBn(remTotal);
+      }
+      tbody.querySelectorAll('input').forEach(inp=> inp.addEventListener('input', recompute));
+      recompute();
+
+      // Apply deed → create buyers as children; deduct from seller
+      box.querySelector('#sd-apply').addEventListener('click', ()=>{
+        const buyers = readBuyerDOM().filter(b=> (b.name||'').trim()!=='' );
+        const pctSum = buyers.reduce((s,b)=> s + (b.pct||0), 0) || 100;
+        const weights = buyers.map(b=> ({ name: b.name.trim()||'ক্রেতা', w: (b.pct||0)/pctSum }));
+
+        // Compute per-dag sold & remaining
+        const soldByDag = {}; const remByDag = {};
+        khatian.dags.forEach(d=>{
+          const sold = round4(parseNum(tbody.querySelector(`input[data-did="${d.id}"]`).value||0));
+          const owned = round4(node.portions?.[d.id]||0);
+          soldByDag[d.id] = sold; remByDag[d.id] = round4(owned - sold);
+        });
+
+        // Oversell warning
+        const over = Object.values(remByDag).some(v=> v< -1e-9);
+        if(over && !confirm('কিছু দাগে বিক্রেতা মালিকানার চেয়ে বেশি বিক্রি করেছেন। তারপরও প্রয়োগ করবেন?')) return;
+
+        // Create/adjust buyer nodes
+        const old = node.portions;
+        // Deduct sold from seller
+        Object.keys(old).forEach(did=>{ old[did] = round4((old[did]||0) - (soldByDag[did]||0)); if(old[did]<0) old[did]=round4(old[did]); });
+
+        // Create buyer portions from soldByDag × weight
+        weights.forEach(b=>{
+          const portions={}; Object.keys(soldByDag).forEach(did=>{ const v = round4((soldByDag[did]||0) * (b.w||0)); portions[did] = v; });
+          // merge if buyer already exists as child with same name
+          let existing = node.children.find(c=> c.edge?.type==='sale' && c.name===b.name);
+          if(existing){ Object.keys(portions).forEach(did=> existing.portions[did] = round4((existing.portions[did]||0) + portions[did])); }
+          else { const c = makeOwnerNode(b.name, portions); c.edge = {type:'sale', label:`দলিল ${($('#sd-no').value||'—')} · ${$('#sd-date').value||''}`}; node.children.push(c); }
+        });
+
+        pushHistory();
+        renderChains();
+      });
+    }
+
+    // ----------------------------
+    // Custom Rules Table
+    // ----------------------------
+    function renderRules(){
+      const tbody=$('#rulesTable tbody'); tbody.innerHTML='';
+      state.rules.forEach((r,i)=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td><input value="${escapeHtml(r.label)}"></td><td><input type="text" inputmode="decimal" min="0" value="${r.percent}"></td><td class="no-print"><button class="btn danger" data-del="${i}">মুছুন</button></td>`;
+        tbody.appendChild(tr);
+        const [lab,pct] = tr.querySelectorAll('input');
+        lab.addEventListener('input', ()=>{ r.label = lab.value; });
+        pct.addEventListener('input', ()=>{ r.percent = Number(pct.value||0); renderRules(); });
+      });
+      $$('#rulesTable [data-del]').forEach(btn=>btn.addEventListener('click', ()=>{ state.rules.splice(Number(btn.dataset.del),1); renderRules(); }));
+      const total = state.rules.reduce((s,r)=>s+(Number(r.percent)||0),0);
+      $('#rulesTotal').textContent = total.toFixed(2)+'%';
+    }
+
+    // ----------------------------
+    // Storage
+    // ----------------------------
+    function saveAll(){ localStorage.setItem('firisti_app_v2', JSON.stringify(state)); alert('সেভ হয়েছে'); }
+    function loadAll(){ const s=localStorage.getItem('firisti_app_v2'); if(!s) return; const obj=JSON.parse(s); state.lawSystem=obj.lawSystem||state.lawSystem; state.deceasedSex=obj.deceasedSex||state.deceasedSex; state.khatians=obj.khatians||[]; state.rules=obj.rules||[]; renderKhatians(); renderChains(); renderRules(); }
+
+    // ----------------------------
+    // Tabs + Binds
+    // ----------------------------
+    $$('.tab').forEach(btn=>btn.addEventListener('click', ()=>{
+      $$('.tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+      const key = btn.dataset.tab;
+      ['khatian','chain','rules','print'].forEach(k=> document.getElementById('panel-'+k).style.display = (k===key?'block':'none'));
+    }));
+
+    $('#addKhatian').addEventListener('click', ()=>addKhatian());
+    $('#loadSampleKhatian').addEventListener('click', ()=>{
+      state.khatians = [];
+      addKhatian({ ownerName:'মোঃ করিম', khatianNo:'123', dags:[{id:uid(), dagNo:'45', class:'বাড়ি', area:0.0500, shareFraction:1.0000}, {id:uid(), dagNo:'46', class:'ধানী', area:1.2500, shareFraction:1.0000}]});
+      addKhatian({ ownerName:'সাবিনা আক্তার', khatianNo:'78', dags:[{id:uid(), dagNo:'11', class:'বাগান', area:0.3000, shareFraction:1.0000}]});
+      renderKhatians(); renderChains();
+    });
+    $('#saveAll').addEventListener('click', saveAll);
+    $('#resetAll').addEventListener('click', ()=>{ localStorage.removeItem('firisti_app_v2'); location.reload(); });
+
+    // Undo
+    $('#undoBtn').addEventListener('click', undo);
+
+    // Global handlers
+    $('#khatianWrap').addEventListener('input', handleKhatianInput);
+    $('#lawSystem').addEventListener('change', (e)=>{ state.lawSystem = e.target.value; pushHistory(); });
+    $('#deceasedSex').addEventListener('change', (e)=>{ state.deceasedSex = e.target.value; pushHistory(); });
+    $('#printBtn').addEventListener('click', ()=> window.print());
+
+    // Load saved
+    loadAll();
+  </script>
+</body>
+</html>
