@@ -104,6 +104,17 @@
       .over { border-color:#c00 !important; background:#fee !important; color:#900 !important; }
       .neg { color:#c00 !important; }
     }
+    @media print {
+  @page {
+    size: Legal;
+    margin: 20mm;
+    @bottom-center {
+      content: "পৃষ্ঠা " counter(page) "/" counter(pages);
+      font-size: 12px;
+      font-family: "Noto Sans Bengali", "SolaimanLipi", sans-serif;
+    }
+  }
+}
   </style>
 </head>
 <body>
@@ -798,5 +809,12 @@
     // Load saved
     loadAll();
   </script>
+  <!-- প্রিন্ট বাটন -->
+<div style="text-align:center; margin-top:20px;">
+  <button onclick="window.print()" 
+          style="padding:10px 20px; font-size:16px; cursor:pointer; background:#4CAF50; color:white; border:none; border-radius:5px;">
+    🖨️ প্রিন্ট করুন
+  </button>
+</div>
 </body>
 </html>
